@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-11
+
 ### Added
 
 - The "§14a Modul 3 grid fee (Germany)" energy contract (delegated pricing):
@@ -29,3 +31,6 @@ the notes of the version's GitHub Release.
   awaited by the pricing.
 - `THIRD_PARTY_NOTICES.md` with the attribution of the data, shipped in the
   image with `LICENSE`.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-netzentgelte-14a/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-netzentgelte-14a/releases/tag/v0.1.1

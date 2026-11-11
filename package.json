@@ -1,6 +1,6 @@
 {
   "name": "gladys-netzentgelte-14a",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "German time-variable grid fees (§14a EnWG Modul 3, HT/ST/NT per grid operator and quarter) as a delegated energy contract for Gladys Assistant, from the Par14a-Database (CC BY 4.0). Unofficial.",
   "type": "module",
