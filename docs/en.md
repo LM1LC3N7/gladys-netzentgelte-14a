@@ -117,12 +117,17 @@ network.
 - "PROVISIONAL" / "n provisional": the share of provisional sheets of a year.
 - "Last check failed …; next try …": the page did not answer (tried again
   after 5, 15, 30, 60 minutes, then every 3 hours), asked to slow down (429:
-  paused for the time it asks, between 1 minute and 6 hours), or sent a file
-  that does not read (the data held stays in use).
+  paused for the time it asks, between 1 minute and 6 hours), or sent a list
+  of years that does not read (`jahre.json`; the data held stays in use). A
+  refused year file is not a failed check: see the next line.
 - "2028: no sheet published yet": the source opened a year without any sheet;
   not an error. "2027: the file was refused (…)": a new file of that year did
   not read; the data held for it stays in use, the other years are updated,
   and the file is asked again (conditionally) at the next daily check.
+- "2026: kept in memory only": the year does not fit in the /data state file
+  (16 MB at most, the most recent years first); at the next start it is
+  downloaded again at once (once an hour at most, never during a 429 pause),
+  without waiting for the daily check.
 - "The data cannot be written to /data": a write failed or took more than
   10 seconds; the data stays in memory and is downloaded again after a
   restart.

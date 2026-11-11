@@ -615,10 +615,103 @@ test('the state file stays under the size read back: the oldest years left out',
     source.files[`${y}.json`] = padded(y);
     source.etags[`${y}.json`] = `"big-${y}"`;
   }
-  const { store, app, lines } = await setup({ source });
+  const { store, app, lines, gladys } = await setup({ source });
   assert.equal(app.years.size, 3, 'all in memory');
   const size = Buffer.byteLength(JSON.stringify(store.data));
   assert.ok(size < 16 * 1024 * 1024, `${size} bytes`);
   assert.deepEqual(Object.keys(store.data.years).sort(), ['2027', '2028']);
   assert.ok(lines.some((l) => /2026 not written to \/data/.test(l)));
+  assert.match(status(gladys).message.en, /2026: kept in memory only/);
+  assert.deepEqual(store.data.dropped, [2026]);
+  await app.stop();
+  // A restart: the left-out year is downloaded again at once, not a day later.
+  const again = createSource();
+  Object.assign(again.files, source.files);
+  Object.assign(again.etags, source.etags);
+  const second = await setup({ store, source: again, now: NOW + HOUR });
+  assert.deepEqual(
+    again.requests.map((r) => r.path),
+    ['2026.json'],
+  );
+  assert.equal(second.app.years.size, 3);
+  await second.app.stop();
+  // Another restart within the hour: not again (a restart loop never repeats it).
+  const third = createSource();
+  Object.assign(third.files, source.files);
+  const last = await setup({ store, source: third, now: NOW + HOUR + 10 * MINUTE });
+  assert.equal(third.requests.length, 0);
+  assert.equal(last.app.years.size, 2);
+  await last.app.stop();
+});
+
+test('a 429 on one year: no other year is asked until the pause ends', async () => {
+  const { source, wait } = await setup();
+  source.files['2027.json'] = () =>
+    new Response('', { status: 429, headers: { 'retry-after': '3600' } });
+  source.requests.length = 0;
+  await wait(DAY);
+  assert.deepEqual(
+    source.requests.map((r) => r.path),
+    ['jahre.json', '2027.json'],
+  );
+  await wait(HOUR - MINUTE);
+  assert.equal(source.requests.length, 2);
+  source.files['2027.json'] = yearFile(2027);
+  await wait(2 * MINUTE);
+  assert.equal(source.count('2026.json'), 1);
+});
+
+test('a status publication that hangs does not hold the next ones', async () => {
+  const { app, gladys, clock } = await setup();
+  const sent = [];
+  gladys.setConnectionStatus = (connected, message) => {
+    sent.push(message?.en);
+    return sent.length === 1 ? new Promise(() => {}) : Promise.resolve();
+  };
+  const unknown = { ...CONTRACT, id: 'c9', inputs: { operator: '999' } };
+  await app.energyCurrent({ contract: unknown });
+  await settle(10);
+  assert.equal(sent.length, 1);
+  await app.energyCurrent({ contract: { ...unknown, id: 'c10' } });
+  await settle(10);
+  assert.equal(sent.length, 1, 'waiting behind the hung one');
+  await clock.advance(10 * SECOND);
+  await settle(10);
+  assert.equal(sent.length, 2, 'sent once the hung one is given up');
+  assert.match(sent[1], /2 contract\(s\): grid operator not found/);
+});
+
+test('writes while one hangs are skipped, not piled up', async () => {
+  const store = createMemoryStore();
+  let calls = 0;
+  store.save = () => {
+    calls += 1;
+    return new Promise(() => {});
+  };
+  const { app, clock } = await setup({ store, start: false });
+  const advance = async (ms) => {
+    await clock.advance(ms);
+    await settle(30);
+  };
+  await app.start();
+  await advance(0);
+  await advance(10 * SECOND);
+  await advance(DAY);
+  await advance(10 * SECOND);
+  await advance(10 * SECOND);
+  assert.ok(app.years.size === 2);
+  assert.equal(calls, 1, 'one write, the hung one');
+  await app.stop();
+});
+
+test('a contract input out of bounds is told as such, not as an unknown operator', async () => {
+  const contracts = [
+    { ...CONTRACT, id: 'c2', inputs: { operator: '101', fixed_eur_month: 1200 } },
+    { ...CONTRACT, id: 'c3', inputs: { operator: '101', vat_percent: '19,5' } },
+  ];
+  const { gladys } = await setup({ contracts });
+  const text = status(gladys).message.en;
+  assert.match(text, /2 contract\(s\): an input is not a number or out of bounds/);
+  assert.doesNotMatch(text, /grid operator not found/);
+  assert.match(status(gladys).message.fr, /2 contrat\(s\) : une entrée n’est pas un nombre/);
 });

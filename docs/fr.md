@@ -114,7 +114,7 @@ utilise ce qui est gardé : elle n'attend pas le réseau.
   le 1er, les demi-heures de décembre d'une période qui passe le 1er janvier
   attendent aussi la grille de l'année suivante.
 - **Réduction Modul 1** : elle ne peut pas être saisie (Gladys refuse un
-  montant fixe négatif) ; les coûts affichés la dépassent d'autant.
+  montant fixe négatif) ; les coûts affichés dépassent la facture d'autant.
 - **Mises à jour des grilles** : quand une grille provisoire devient
   définitive, les demi-heures déjà tarifées gardent leur coût.
 - **Libellés** : une demi-heure dont les deux quarts d'heure diffèrent porte
@@ -129,14 +129,20 @@ utilise ce qui est gardé : elle n'attend pas le réseau.
 - « Dernière vérification en échec … ; nouvel essai … » : la page n'a pas
   répondu (nouvel essai après 5, 15, 30, 60 minutes, puis toutes les 3 heures),
   a demandé de ralentir (429 : pause du temps demandé, entre 1 minute et
-  6 heures), ou a envoyé un fichier illisible (les données gardées restent
-  utilisées).
+  6 heures), ou a envoyé une liste des années illisible (`jahre.json` ; les
+  données gardées restent utilisées). Un fichier d'année refusé n'est pas un
+  échec de vérification : voir la ligne suivante.
 - « 2028 : aucune grille publiée pour l'instant » : la source a ouvert une
   année sans grille ; ce n'est pas une erreur. « 2027 : le fichier a été
   refusé (…) » : un nouveau fichier de cette année est illisible ; les données
   gardées pour elle restent utilisées, les autres années sont mises à jour, et
   le fichier est redemandé (de façon conditionnelle) à la vérification
   quotidienne suivante.
+- « 2026 : gardée en mémoire seulement » : l'année ne tient pas dans le
+  fichier d'état de /data (16 Mo au plus, les années les plus récentes
+  d'abord) ; au démarrage suivant elle est retéléchargée tout de suite (une
+  fois par heure au plus, jamais pendant une pause 429), sans attendre la
+  vérification quotidienne.
 - « Les données ne peuvent pas être écrites dans /data » : une écriture a
   échoué ou a pris plus de 10 secondes ; les données restent en mémoire et
   sont retéléchargées après un redémarrage.

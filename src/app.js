@@ -27,6 +27,7 @@ import {
   PAUSE_DEFAULT,
   PAUSE_MAX,
   PAUSE_MIN,
+  REFILL_EVERY,
   RETRY_STEPS,
   SAVE_TIMEOUT,
   STATUS_TIMEOUT,
@@ -70,6 +71,10 @@ export class App {
     this.files = {};
     /** year -> { etag, issue } of the last file refused ('pending', 'invalid', 'too_large', 'not_found') */
     this.refused = {};
+    /** Years held in memory but left out of /data for its size (downloaded again at a restart). */
+    this.dropped = new Set();
+    /** Years /data said it left out: downloaded again by refill(). */
+    this.missing = new Set();
     this.meta = { attemptAt: undefined, checkedAt: undefined, failures: 0, pausedUntil: undefined };
     this.lastError = undefined;
     this.retryAt = undefined;
@@ -166,6 +171,7 @@ export class App {
       this.schedule(gen);
       this.publishStatus();
       await this.refreshContracts(gen);
+      await this.refill(gen);
     })().finally(() => {
       this.loading = undefined;
     });
@@ -189,6 +195,7 @@ export class App {
         ? data.pausedUntil
         : undefined;
     this.lastError = typeof data.lastError === 'string' ? data.lastError : undefined;
+    this.meta.refillAt = pastDate(data.refillAt, now);
     const refused = data.refused && typeof data.refused === 'object' ? data.refused : {};
     for (const [key, entry] of Object.entries(refused)) {
       if (
@@ -218,6 +225,45 @@ export class App {
         this.logger.warn(`Stored data for ${year} unusable: downloaded again`);
       }
     }
+    // The years left out of /data for its size: asked again soon after the start (below).
+    for (const year of Array.isArray(data.dropped) ? data.dropped.slice(0, MAX_YEARS) : []) {
+      if (Number.isInteger(year) && year >= 2000 && year < 2100 && !this.years.has(year)) {
+        this.missing.add(year);
+      }
+    }
+  }
+
+  /**
+   * Downloads again the years /data could not hold (too large for the state
+   * file), without waiting for the daily check: at most once an hour (the
+   * time is written first, so a restart loop does not repeat it), never
+   * during a 429 pause. A failure waits for the daily check.
+   */
+  async refill(gen) {
+    const now = this.now();
+    const { refillAt, pausedUntil } = this.meta;
+    if (this.missing.size === 0 || (pausedUntil !== undefined && pausedUntil > now)) return;
+    if (refillAt !== undefined && now - refillAt < REFILL_EVERY) return;
+    if (this.checking) return;
+    this.checking = (async () => {
+      this.meta.refillAt = now;
+      await this.save();
+      for (const year of [...this.missing].sort((a, b) => b - a)) {
+        if (gen !== this.generation) return;
+        try {
+          await this.checkYear(year);
+        } catch (err) {
+          if (!(err instanceof SourceError)) throw err;
+          this.logger.warn(`Par14a-Database ${year}: not downloaded again (${err.message})`);
+          if (err.code === 'rate_limited') break;
+        }
+        if (this.years.has(year)) this.missing.delete(year);
+      }
+      this.publishStatus();
+    })().finally(() => {
+      this.checking = undefined;
+    });
+    await this.checking;
   }
 
   /**
@@ -228,16 +274,25 @@ export class App {
   stateToSave() {
     const years = {};
     let budget = MAX_STATE_BYTES - 64 * 1024;
+    this.dropped.clear();
     for (const year of Object.keys(this.files).sort((a, b) => b - a)) {
       const file = this.files[year];
       if (file.bytes > budget) {
         this.logger.warn(`${year} not written to /data: the state file would be too large`);
+        this.dropped.add(Number(year));
         continue;
       }
       budget -= file.bytes;
       years[year] = { etag: file.etag, lastModified: file.lastModified, json: file.json };
     }
-    return { ...this.meta, lastError: this.lastError, refused: this.refused, years };
+    return {
+      ...this.meta,
+      lastError: this.lastError,
+      refused: this.refused,
+      // Still missing after a restart (not downloaded again yet): kept on the list.
+      dropped: [...new Set([...this.dropped, ...this.missing])],
+      years,
+    };
   }
 
   /**
@@ -451,7 +506,9 @@ export class App {
         .sort((a, b) => b - a)[0];
       let unresolved = 0;
       let weekdays = 0;
+      let invalid = 0;
       for (const c of this.contracts.values()) {
+        if (c.invalid) invalid += 1;
         if (c.unresolved) unresolved += 1;
         if (c.weekdays) weekdays += 1;
       }
@@ -465,6 +522,8 @@ export class App {
           retryAt: this.retryAt,
           unresolved,
           weekdays,
+          invalid,
+          dropped: [...this.dropped].sort((a, b) => b - a),
           issues: Object.entries(this.refused)
             .map(([year, r]) => ({
               year: Number(year),
@@ -516,9 +575,18 @@ export class App {
     if (contract.template_key !== undefined && contract.template_key !== TEMPLATE_KEY) return;
     const year = this.statusYear();
     if (year === undefined) return;
+    let inputs;
+    try {
+      inputs = contractInputs(contract);
+    } catch (err) {
+      if (!(err instanceof PricingError)) throw err;
+      // An input out of bounds or not a number: told apart from an unknown operator.
+      this.contracts.set(String(contract.id), { invalid: true });
+      return;
+    }
     let note;
     try {
-      const op = operatorOf({ years: this.years }, year, contractInputs(contract).operator);
+      const op = operatorOf({ years: this.years }, year, inputs.operator);
       note = { unresolved: false, weekdays: Boolean(op.weekdaysNote) };
     } catch (err) {
       if (!(err instanceof PricingError)) throw err;

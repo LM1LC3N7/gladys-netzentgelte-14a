@@ -72,5 +72,7 @@ export const PAUSE_DEFAULT = 10 * 60_000;
 export const STORE_RETRY = 10_000;
 /** A write of /data longer than this counts as failed (the data stays in memory). */
 export const SAVE_TIMEOUT = 10_000;
+/** A year left out of /data for its size: downloaded again at a start, at most once an hour. */
+export const REFILL_EVERY = 60 * 60_000;
 /** A status publication longer than this is given up (the next one goes on). */
 export const STATUS_TIMEOUT = 10_000;

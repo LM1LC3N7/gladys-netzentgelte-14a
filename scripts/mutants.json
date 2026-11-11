@@ -352,5 +352,59 @@
     "file": "src/http.js",
     "from": "Number.isFinite(served) ? served : now()",
     "to": "now()"
+  },
+  {
+    "name": "N1 app: the other years still asked after a 429",
+    "file": "src/app.js",
+    "from": "failure = err;\n          if (err.code === 'rate_limited') break;",
+    "to": "failure = err;"
+  },
+  {
+    "name": "N2 app: an empty new file of a held year taken as pending",
+    "file": "src/app.js",
+    "from": "err.message === 'no usable price sheet' && !this.years.has(year) ? 'pending' : 'invalid';",
+    "to": "err.message === 'no usable price sheet' ? 'pending' : 'invalid';"
+  },
+  {
+    "name": "N3 app: the oldest years kept first in /data",
+    "file": "src/app.js",
+    "from": "Object.keys(this.files).sort((a, b) => b - a)",
+    "to": "Object.keys(this.files).sort((a, b) => a - b)"
+  },
+  {
+    "name": "N4 app: a refusal kept after a good file",
+    "file": "src/app.js",
+    "from": "delete this.refused[year];",
+    "to": ""
+  },
+  {
+    "name": "N5 app: a status publication awaited without bound",
+    "file": "src/app.js",
+    "from": "if ((await Promise.race([sent.then(() => 'ok'), late])) === 'timeout') {",
+    "to": "if ((await sent.then(() => 'ok')) === 'timeout') {"
+  },
+  {
+    "name": "N6 app: a second write started while one hangs",
+    "file": "src/app.js",
+    "from": "if (this.saving) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "app: left-out year not downloaded again at start",
+    "file": "src/app.js",
+    "from": "      await this.refill(gen);\n",
+    "to": ""
+  },
+  {
+    "name": "app: left-out year downloaded at every restart",
+    "file": "src/app.js",
+    "from": "if (refillAt !== undefined && now - refillAt < REFILL_EVERY) return;",
+    "to": ""
+  },
+  {
+    "name": "app: invalid input told as an unknown operator",
+    "file": "src/app.js",
+    "from": "this.contracts.set(String(contract.id), { invalid: true });",
+    "to": "this.contracts.set(String(contract.id), { unresolved: true });"
   }
 ]

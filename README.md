@@ -37,7 +37,8 @@ Gladys ⇄ SDK ⇄ src/app.js (App)   daily check, /data, status, pricing handle
   (the year held stays in use); both keep their ETag, so they are not
   downloaded again until they change, and neither stops the other years nor
   speeds the retries up. Writes to `/data` are bounded (10 s) and kept under
-  the 16 MB read back (the oldest years left out).
+  the 16 MB read back (the oldest years left out, said in the status, and
+  downloaded again right after the next start, once an hour at most).
 - **Status**: published in the background, each state once, never awaited by
   the pricing handlers.
 - **Checks on the data**: windows on the quarter-hour grid (`24:00` as an end,

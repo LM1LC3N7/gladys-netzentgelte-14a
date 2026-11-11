@@ -64,6 +64,8 @@ export const T = {
     weekdays,
     issues = [],
     dataError,
+    invalid = 0,
+    dropped = [],
   }) {
     const out = {};
     for (const lang of ['en', 'fr']) {
@@ -116,6 +118,20 @@ export const T = {
           lang === 'en'
             ? 'The data cannot be written to /data (it stays in memory; downloaded again after a restart): check the volume of the integration.'
             : 'Les données ne peuvent pas être écrites dans /data (elles restent en mémoire ; retéléchargées après un redémarrage) : vérifiez le volume de l’intégration.',
+        );
+      }
+      for (const year of dropped) {
+        parts.push(
+          lang === 'en'
+            ? `${year}: kept in memory only (/data would be too large); downloaded again soon after the next start.`
+            : `${year} : gardée en mémoire seulement (/data serait trop grand) ; retéléchargée peu après le prochain démarrage.`,
+        );
+      }
+      if (invalid > 0) {
+        parts.push(
+          lang === 'en'
+            ? `${invalid} contract(s): an input is not a number or out of bounds (VAT 0-100 %, supplement 0-200 ct/kWh, fixed 0-1000 EUR/month).`
+            : `${invalid} contrat(s) : une entrée n’est pas un nombre ou sort des bornes (TVA 0-100 %, supplément 0-200 ct/kWh, fixe 0-1000 EUR/mois).`,
         );
       }
       if (unresolved > 0) {
