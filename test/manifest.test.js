@@ -52,7 +52,7 @@ function* objects(node) {
 test('the store basics', () => {
   assert.equal(manifest.manifest_version, 1);
   assert.equal(manifest.type, 'provider', 'no device: capabilities only');
-  assert.equal(manifest.gladys_version, '>=5.2.0', 'energy contracts need Gladys 5.2');
+  assert.equal(manifest.gladys_version, '>=5.3.0', 'countries needs Gladys 5.3');
   assert.deepEqual(manifest.categories, ['energy']);
   assert.deepEqual(manifest.transports, ['cloud']);
   for (const lang of ['en', 'fr']) {
@@ -63,7 +63,7 @@ test('the store basics', () => {
   assert.match(manifest.description.en, /^Unofficial/);
   assert.match(manifest.description.fr, /^Non officiel/);
   assert.equal(manifest.keywords, undefined);
-  assert.equal(manifest.countries, undefined);
+  assert.deepEqual(manifest.countries, ['DE'], 'German grid operators only');
 });
 
 test('one version everywhere, semver, never pinned by hand twice', () => {
