@@ -5,7 +5,9 @@ contributors.
 
 ## What this is
 
-A Gladys Assistant **external integration**: a Node.js service (Node 22+, ESM,
+A Gladys Assistant **external integration** (`type: "provider"`) that adds the
+German §14a EnWG Modul 3 grid fee as a delegated energy contract, from the
+Par14a-Database (CC BY 4.0). A Node.js service (Node 22+, ESM,
 no build step) that runs in its own sandboxed Docker container and talks to
 Gladys through
 [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js),
@@ -32,17 +34,24 @@ pushing.
 
 ```
 index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
-src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
+src/app.js                        daily check of the source, /data, status, pricing, search button
+src/http.js                       the only network access (timeout, ETag, bounded body, no redirect)
+src/data.js                       Par14a-Database year file -> checked operators (pure)
+src/tariff.js                     delegated costs and current price (pure)
+src/time.js                       Berlin wall-clock time (pure)
+src/store.js                      /data state file (missing vs unreadable)
+src/i18n.js                       status and button texts (en, fr)
+src/constants.js                  manifest keys, URLs, bounds, schedule
+gladys-assistant-integration.json manifest: provider, energy_contracts (one delegated template)
 docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
 test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
-.github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
+scripts/mutants.mjs, mutants.json mutation check of the guards (not in the image, not in CI)
+scripts/cover.mjs                 generates cover.png
 ```
+
+The data is CC BY 4.0: keep the attribution (manifest intro, docs, README,
+`THIRD_PARTY_NOTICES.md`) and the "provisional" dating in the status. The
+pricing path never touches the network nor `/data`.
 
 ## Rules
 

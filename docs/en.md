@@ -1,61 +1,116 @@
-# Demo Devices Template
+# §14a Netzentgelte (Modul 3) for Gladys Assistant
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+**Unofficial integration, not affiliated with any grid operator, nor with the
+Bundesnetzagentur. Never tested with a real Gladys energy contract yet.**
 
-## What you get
+In Germany, a heat pump, a wallbox, an air conditioner or a home battery of more
+than 4.2 kW steered by the grid operator under §14a EnWG gets a reduced grid
+fee. With **Modul 3** (on top of Modul 1), the grid fee per kWh also changes
+with the time of day, in three levels:
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+- **HT** (Hochlasttarif, high), in the evening peak for instance;
+- **ST** (Standardtarif), the rest of the day;
+- **NT** (Niedertarif, low), at night or at midday.
 
-## Configuration
+Each grid operator sets its own windows, for the quarters of the year where
+Modul 3 applies (often Q1 and Q4, sometimes all year); in the other quarters,
+the standard price applies.
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+This integration adds an **energy contract** to Gladys: it prices every half
+hour of your meter with your operator's grid fee in force then.
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+## Data source and attribution
 
-## Actions
+The prices and windows come from the **Par14a-Database (the78mole),
+<https://github.com/the78mole/Par14a-Database>, licence: CC BY 4.0**, read
+from the price sheets the operators publish under the EnWG (operator master
+data from [vnbdigital.de](https://www.vnbdigital.de)).
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+- **The 2027 sheets are provisional** (_vorläufig_): the operators publish the
+  final ones by the end of the year. The status of the integration says, per
+  year, how many sheets are provisional, the date the data was published and
+  when it was last checked; the current price of a contract shows
+  "(provisional)" and the date the sheet was read.
+- The data is provided without warranty: **your operator's own price sheet
+  prevails**. A cost already computed is not recomputed when a sheet changes
+  (see "Limits").
+- Changes made to the data: the windows are turned into quarter-hour levels,
+  the VAT and your supplement are added (details in `THIRD_PARTY_NOTICES.md`).
 
-## Scenes
+The integration downloads the yearly files of the Par14a-Database web page
+(about 1 MB each, the years it lists, 6 at most) **once a day**, with a
+conditional request (nothing is downloaded when nothing changed), and keeps
+them in its `/data` volume. Pricing uses what is held: it never waits for the
+network.
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+## Setup
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+1. Install the integration from the store. It has no configuration: the
+   configuration screen shows its status and a button.
+2. Find your grid operator (_Netzbetreiber_, on your electricity bill, not
+   your supplier): type part of its name, its town or its postcode in **Find
+   my grid operator** and press it. The answer lists the matching operators
+   with their **ID**, the sheet of the year (final or provisional, the date it
+   was read), the HT / ST / NT prices (net) and the Modul 3 quarters. The
+   postcode and town are those of the operator's head office, not of your home.
+3. In **Energy → Contracts**, create a contract from the template **"§14a
+   Modul 3 grid fee (Germany)"** on the meter of your §14a device (a separate
+   meter with Modul 3, or your main meter), and fill in:
+   - **Grid operator (ID or name)**: the ID given by the button (e.g. `7214`),
+     or the exact name; a part of a name works only while it matches a single
+     operator;
+   - **VAT on the grid fee** (19 % by default; 0 keeps the net prices);
+   - **Supplement per kWh** (ct/kWh, 0 by default): everything else your
+     supplier bills per kWh (energy, levies, electricity tax), VAT included,
+     added as you type it;
+   - **Fixed amount per month** (EUR, 0 by default): the base prices, Modul 1
+     reduction deducted, VAT included; Gladys computes it.
 
-## Dashboard
+## How a half hour is priced
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+- The windows are wall-clock times in **German time** (CET in winter, CEST in
+  summer), whatever the timezone of Gladys. On the spring change day the
+  quarter hours from 02:00 to 02:45 do not exist; on the autumn change day the
+  hour from 02:00 to 03:00 happens twice, and both are priced by their
+  wall-clock time.
+- The windows of the sheets are on the quarter-hour grid (17:15, 19:45…), the
+  meter data on the half hour: each half hour is priced as **two quarter
+  hours of half its energy** (consumption assumed even within the half hour).
+- The sheet used is the one of the German year of the quarter hour: the night
+  of 31 December switches to the next year's sheet at midnight German time.
+- Cost = grid fee × (1 + VAT) + supplement, per kWh, in EUR. Gladys adds the
+  fixed amount per month.
+- The current price (dashboard price widget, "current price" scene condition)
+  is the price of the current quarter hour, with the time of the next change
+  and the next price.
 
-## Troubleshooting
+## Limits
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **Working days**: a few sheets limit HT / NT to working days (the database
+  only notes it in a comment). The integration prices every day with the
+  windows, and says so in the status and in the search answer for the
+  operators concerned. Public holidays are not handled either.
+- **Data missing**: a year not in the database (2025 and before, 2028 before
+  it is published), an operator without a usable Modul 3 sheet, or an operator
+  name matching several operators: the half hours are not priced (never priced
+  at 0); Gladys tries again at its next run, and catches up once the data is
+  there. The status counts the contracts whose operator is not found.
+- **Sheet updates**: when a provisional sheet becomes final, the half hours
+  priced before keep their cost.
+- The prices of the database are the grid fees only: the energy price of your
+  supplier, the levies and the taxes go in the supplement.
+
+## Status messages
+
+- "PROVISIONAL" / "n provisional": the share of provisional sheets of a year.
+- "Last check failed …; next try …": the page did not answer (tried again
+  after 5, 15, 30, 60 minutes, then every 3 hours), asked to slow down (429:
+  paused for the time it asks, between 1 minute and 6 hours), or sent a file
+  that does not read (the data held stays in use).
+- "The saved data in /data cannot be read": the volume of the integration is
+  broken; read again every 10 seconds, nothing is downloaded meanwhile.
+
+## Privacy
+
+No account, no personal data: the integration only downloads public files,
+with its own User-Agent. Your contract inputs stay in Gladys.

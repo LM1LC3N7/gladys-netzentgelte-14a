@@ -1,177 +1,145 @@
 {
   "manifest_version": 1,
-  "type": "device",
-  "name": "Demo Devices Template",
+  "type": "provider",
+  "name": "§14a Netzentgelte (Modul 3)",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Unofficial: German time-variable grid fees §14a EnWG Modul 3 (HT/ST/NT) as an energy contract.",
+    "fr": "Non officiel : tarifs réseau allemands variables §14a EnWG Modul 3 (HT/ST/NT) en contrat."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
-  "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "version": "0.1.0",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-netzentgelte-14a:0.1.0",
+  "gladys_version": ">=5.2.0",
+  "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-netzentgelte-14a/main/cover.png",
+  "categories": ["energy"],
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "§14a EnWG Modul 3 grid fees",
+        "fr": "Tarifs réseau §14a EnWG Modul 3"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Unofficial, not affiliated with any grid operator. For a heat pump, wallbox or battery steered under §14a EnWG with Modul 3, the grid fee per kWh changes with the time of day: HT (high), ST (standard), NT (low), in the windows and quarters of your grid operator. This integration adds the \"§14a Modul 3 grid fee\" energy contract: create it in Energy → Contracts, type your grid operator (use the button below to find its ID), and Gladys prices every half hour. Data: Par14a-Database (the78mole), CC BY 4.0, read from the operators' price sheets; the 2027 sheets are PROVISIONAL (vorläufig) until the operators publish the final ones, and the status below dates the data. The operator's own price sheet always prevails.",
+        "fr": "Non officiel, sans lien avec un gestionnaire de réseau. Pour une pompe à chaleur, une borne ou une batterie pilotée au titre du §14a EnWG avec le Modul 3, le tarif réseau au kWh change selon l'heure : HT (haut), ST (standard), NT (bas), dans les plages et trimestres de votre gestionnaire. Cette intégration ajoute le contrat d'énergie « Tarif réseau §14a Modul 3 » : créez-le dans Énergie → Contrats, indiquez votre gestionnaire de réseau (le bouton ci-dessous donne son identifiant), et Gladys tarife chaque demi-heure. Données : Par14a-Database (the78mole), CC BY 4.0, relevées dans les grilles des gestionnaires ; les grilles 2027 sont PROVISOIRES (vorläufig) jusqu'à la publication des définitives, et le statut ci-dessous date les données. La grille du gestionnaire fait toujours foi."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/LM1LC3N7/gladys-netzentgelte-14a/blob/main/docs/en.md",
+          "label": { "en": "Guide (English)", "fr": "Guide (anglais)" }
+        },
+        {
+          "url": "https://github.com/LM1LC3N7/gladys-netzentgelte-14a/blob/main/docs/fr.md",
+          "label": { "en": "Guide (French)", "fr": "Guide (français)" }
+        },
+        {
+          "url": "https://github.com/the78mole/Par14a-Database",
+          "label": {
+            "en": "Par14a-Database (the78mole, CC BY 4.0)",
+            "fr": "Par14a-Database (the78mole, CC BY 4.0)"
+          }
         }
       ]
-    },
-    {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
-      },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
-    },
-    {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
-      },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
-    },
-    {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
-      },
-      "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
+      "key": "find_operator",
+      "label": { "en": "Find my grid operator", "fr": "Trouver mon gestionnaire de réseau" },
+      "timeout_seconds": 10,
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "key": "query",
+          "type": "string",
+          "required": true,
+          "label": {
+            "en": "Name, town, postcode or ID",
+            "fr": "Nom, ville, code postal ou identifiant"
+          },
+          "placeholder": { "en": "e.g. Netze BW", "fr": "ex. Netze BW" }
         }
       ]
     }
   ],
-  "scene_triggers": [
-    {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
-      "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
-      },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
+  "energy_contracts": {
+    "templates": [
+      {
+        "key": "de-14a-modul-3",
+        "name": {
+          "en": "§14a Modul 3 grid fee (Germany)",
+          "fr": "Tarif réseau §14a Modul 3 (Allemagne)"
         },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
+        "description": {
+          "en": "Time-variable grid fee of your grid operator (HT/ST/NT windows per quarter, German time), from the Par14a-Database (CC BY 4.0; 2027 sheets provisional). The sheet prices are net: VAT is added, then your supplement per kWh (energy, levies) if any.",
+          "fr": "Tarif réseau variable de votre gestionnaire (plages HT/ST/NT par trimestre, heure allemande), d'après la Par14a-Database (CC BY 4.0 ; grilles 2027 provisoires). Les prix des grilles sont hors TVA : la TVA est ajoutée, puis votre supplément au kWh (énergie, taxes) s'il y en a un."
+        },
+        "country": "DE",
+        "currency": "EUR",
+        "timezone": "Europe/Berlin",
+        "pricing_mode": "delegated",
+        "version": "2026-11-01",
+        "inputs": [
+          {
+            "key": "operator",
+            "type": "string",
+            "required": true,
+            "label": {
+              "en": "Grid operator (ID or name)",
+              "fr": "Gestionnaire de réseau (ID ou nom)"
+            },
+            "description": {
+              "en": "The ID given by the \"Find my grid operator\" button of the integration (e.g. 7214), or its exact name.",
+              "fr": "L'identifiant donné par le bouton « Trouver mon gestionnaire de réseau » de l'intégration (ex. 7214), ou son nom exact."
+            }
+          },
+          {
+            "key": "vat_percent",
+            "type": "number",
+            "unit": "%",
+            "default": 19,
+            "label": { "en": "VAT on the grid fee", "fr": "TVA sur le tarif réseau" },
+            "description": {
+              "en": "Added to the net prices of the sheet (0 to keep them net).",
+              "fr": "Ajoutée aux prix hors TVA de la grille (0 pour les garder hors TVA)."
+            }
+          },
+          {
+            "key": "supplement_ct_kwh",
+            "type": "number",
+            "unit": "ct/kWh",
+            "default": 0,
+            "label": { "en": "Supplement per kWh", "fr": "Supplément au kWh" },
+            "description": {
+              "en": "Everything else your supplier bills per kWh (energy, levies, taxes), VAT included, added as typed.",
+              "fr": "Tout le reste facturé au kWh par votre fournisseur (énergie, prélèvements, taxes), TVA comprise, ajouté tel quel."
+            }
+          },
+          {
+            "key": "fixed_eur_month",
+            "type": "number",
+            "unit": "EUR/month",
+            "default": 0,
+            "label": { "en": "Fixed amount per month", "fr": "Montant fixe par mois" },
+            "description": {
+              "en": "Base prices per month, Modul 1 reduction deducted, VAT included.",
+              "fr": "Prix de base par mois, réduction Modul 1 déduite, TVA comprise."
+            }
+          }
+        ],
+        "tariff": {
+          "tariff_version": 1,
+          "components": [
+            {
+              "key": "fixed",
+              "kind": "fixed",
+              "label": "Fixed",
+              "amount": "{{input:fixed_eur_month}}",
+              "per": "month"
+            }
           ]
         }
-      ],
-      "variables": [
-        {
-          "key": "target",
-          "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
-        }
-      ]
-    }
-  ],
-  "scene_actions": [
-    {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
-      },
-      "timeout_seconds": 15,
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ],
-      "outputs": [
-        {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
-        }
-      ]
-    }
-  ],
-  "widgets": [
-    {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
-      },
-      "icon": "activity",
-      "action_timeout_seconds": 15
-    }
-  ]
+      }
+    ]
+  }
 }

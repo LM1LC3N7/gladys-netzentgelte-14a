@@ -1,0 +1,200 @@
+[
+  {
+    "name": "data: overlapping windows accepted",
+    "file": "src/data.js",
+    "from": "if (levels[s] !== LEVELS.ST) throw new DataError('overlapping windows');",
+    "to": ""
+  },
+  {
+    "name": "data: price upper bound removed",
+    "file": "src/data.js",
+    "from": "value >= 0 && value <= MAX_PRICE_CT",
+    "to": "value >= 0"
+  },
+  {
+    "name": "data: negative price accepted",
+    "file": "src/data.js",
+    "from": "Number.isFinite(value) && value >= 0 &&",
+    "to": "Number.isFinite(value) &&"
+  },
+  {
+    "name": "data: windows outside the active quarters accepted",
+    "file": "src/data.js",
+    "from": "if (!active.includes(Number(key))) throw",
+    "to": "if (false) throw"
+  },
+  {
+    "name": "data: control characters in names accepted",
+    "file": "src/data.js",
+    "from": "if (!t || t.length > max || CONTROL.test(t)) return undefined;",
+    "to": "if (!t) return undefined;"
+  },
+  {
+    "name": "data: a partial name matching several operators taken",
+    "file": "src/data.js",
+    "from": "if (partial.length === 1) return { op: partial[0] };",
+    "to": "if (partial.length >= 1) return { op: partial[0] };"
+  },
+  {
+    "name": "data: two exact names, the first taken",
+    "file": "src/data.js",
+    "from": "if (exact.length === 1) return { op: exact[0] };",
+    "to": "if (exact.length >= 1) return { op: exact[0] };"
+  },
+  {
+    "name": "tariff: outside Modul 3, ST instead of the standard price",
+    "file": "src/tariff.js",
+    "from": "return levels ? levels[slotOf(local)] : 'STD';",
+    "to": "return levels ? levels[slotOf(local)] : 'S';"
+  },
+  {
+    "name": "tariff: one quarter priced twice",
+    "file": "src/tariff.js",
+    "from": "for (const q of [t, t + QUARTER_HOUR]) {",
+    "to": "for (const q of [t, t]) {"
+  },
+  {
+    "name": "tariff: UTC year instead of the Berlin year",
+    "file": "src/tariff.js",
+    "from": "const op = pick(local.year);",
+    "to": "const op = pick(new Date(t).getUTCFullYear());"
+  },
+  {
+    "name": "tariff: negative energy accepted",
+    "file": "src/tariff.js",
+    "from": "!Number.isFinite(kwh) || kwh < 0",
+    "to": "!Number.isFinite(kwh)"
+  },
+  {
+    "name": "tariff: unaligned interval accepted",
+    "file": "src/tariff.js",
+    "from": "!Number.isFinite(t) || t % QUARTER_HOUR !== 0",
+    "to": "!Number.isFinite(t)"
+  },
+  {
+    "name": "tariff: VAT wrong",
+    "file": "src/tariff.js",
+    "from": "const vat = grid * (inputs.vat / 100);",
+    "to": "const vat = grid * (inputs.vat / 1000);"
+  },
+  {
+    "name": "tariff: input upper bound removed",
+    "file": "src/tariff.js",
+    "from": "if (!Number.isFinite(n) || n < min || n > max) {",
+    "to": "if (!Number.isFinite(n) || n < min) {"
+  },
+  {
+    "name": "tariff: another template priced",
+    "file": "src/tariff.js",
+    "from": "contract.template_key !== TEMPLATE_KEY",
+    "to": "false"
+  },
+  {
+    "name": "tariff: unknown current price told as 0",
+    "file": "src/app.js",
+    "from": "return { price: null };",
+    "to": "return { price: 0 };"
+  },
+  {
+    "name": "time: UTC instead of Berlin",
+    "file": "src/time.js",
+    "from": "timeZone: TIMEZONE,",
+    "to": "timeZone: 'UTC',"
+  },
+  {
+    "name": "app: attempt not dated before the requests",
+    "file": "src/app.js",
+    "from": "    this.meta.attemptAt = this.now();\n    await this.save();\n",
+    "to": "    this.meta.attemptAt = this.now();\n"
+  },
+  {
+    "name": "app: a future attempt date trusted",
+    "file": "src/app.js",
+    "from": "value > 0 && value <= now",
+    "to": "value > 0"
+  },
+  {
+    "name": "app: 429 pause not bounded",
+    "file": "src/app.js",
+    "from": "Math.min(Math.max(err.retryAfter ?? PAUSE_DEFAULT, PAUSE_MIN), PAUSE_MAX)",
+    "to": "err.retryAfter ?? PAUSE_DEFAULT"
+  },
+  {
+    "name": "app: stored pause not bounded",
+    "file": "src/app.js",
+    "from": "data.pausedUntil <= now + PAUSE_MAX",
+    "to": "true"
+  },
+  {
+    "name": "app: stored pause ignored",
+    "file": "src/app.js",
+    "from": "if (pausedUntil !== undefined && pausedUntil > due) due = pausedUntil;",
+    "to": ""
+  },
+  {
+    "name": "app: unreadable /data taken as empty",
+    "file": "src/app.js",
+    "from": "if (result.status === 'unreadable') {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "app: request never conditional",
+    "file": "src/app.js",
+    "from": "etag: this.years.has(year) ? held?.etag : undefined,",
+    "to": "etag: undefined,"
+  },
+  {
+    "name": "app: retries not spaced",
+    "file": "src/app.js",
+    "from": "RETRY_STEPS[Math.min(failures, RETRY_STEPS.length) - 1]",
+    "to": "RETRY_STEPS[0]"
+  },
+  {
+    "name": "app: schedule lost after a reconnection during a check",
+    "file": "src/app.js",
+    "from": "if (this.checking) this.checking.then(resume, resume);",
+    "to": "if (this.checking) void 0;"
+  },
+  {
+    "name": "app: timers kept after stop",
+    "file": "src/app.js",
+    "from": "    this.running = false;\n    this.generation += 1;\n    this.clearTimers();",
+    "to": "    this.running = false;\n    this.generation += 1;"
+  },
+  {
+    "name": "app: a stored year not checked again",
+    "file": "src/app.js",
+    "from": "        const parsed = parseYear(entry.json);\n        this.years.set(year, parsed);",
+    "to": "        const parsed = { operators: [], priced: 1, provisional: 0, ...entry.parsed };\n        this.years.set(year, parsed);"
+  },
+  {
+    "name": "http: body read whole",
+    "file": "src/http.js",
+    "from": "    if (size > limit) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "http: declared length not checked",
+    "file": "src/http.js",
+    "from": "if (Number.isFinite(declared) && declared > limit) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "http: redirects followed",
+    "file": "src/http.js",
+    "from": "redirect: 'error',",
+    "to": "redirect: 'follow',"
+  },
+  {
+    "name": "http: no timeout",
+    "file": "src/http.js",
+    "from": "signal: AbortSignal.timeout(Math.max(1, timeout)),",
+    "to": ""
+  },
+  {
+    "name": "http: Retry-After negative accepted",
+    "file": "src/http.js",
+    "from": "if (!/^[A-Za-z]{3}, /.test(value)) return undefined;",
+    "to": ""
+  }
+]
