@@ -115,9 +115,14 @@ export async function getJson(
   }
   await response.body?.cancel?.().catch(() => {});
   if (status === 429) {
+    // An HTTP date is compared to the server's own clock (its Date header) when it gives one.
+    const served = Date.parse(response.headers?.get?.('date') ?? '');
     throw new SourceError('rate_limited', 'The Par14a-Database page asked to slow down (429)', {
       status,
-      retryAfter: retryAfterMs(response.headers?.get?.('retry-after'), now()),
+      retryAfter: retryAfterMs(
+        response.headers?.get?.('retry-after'),
+        Number.isFinite(served) ? served : now(),
+      ),
     });
   }
   if (status === 404) {

@@ -54,7 +54,17 @@ export const T = {
    * the data), the last check, the error of the last attempt if any, and the
    * contracts whose operator is not found.
    */
-  status({ years, published, checkedAt, error, retryAt, unresolved, weekdays }) {
+  status({
+    years,
+    published,
+    checkedAt,
+    error,
+    retryAt,
+    unresolved,
+    weekdays,
+    issues = [],
+    dataError,
+  }) {
     const out = {};
     for (const lang of ['en', 'fr']) {
       const parts = [];
@@ -84,6 +94,28 @@ export const T = {
           lang === 'en'
             ? `Last check failed: ${reason(error, lang)}; next try ${berlinText(retryAt)}.`
             : `Dernière vérification en échec : ${reason(error, lang)} ; nouvel essai ${berlinText(retryAt)}.`,
+        );
+      }
+      for (const { year, issue, held } of issues) {
+        if (issue === 'pending') {
+          parts.push(
+            lang === 'en'
+              ? `${year}: no sheet published yet.`
+              : `${year} : aucune grille publiée pour l’instant.`,
+          );
+        } else {
+          parts.push(
+            lang === 'en'
+              ? `${year}: the file was refused (${reason(issue, lang)})${held ? '; the data held stays in use' : ''}.`
+              : `${year} : le fichier a été refusé (${reason(issue, lang)})${held ? ' ; les données gardées restent utilisées' : ''}.`,
+          );
+        }
+      }
+      if (dataError) {
+        parts.push(
+          lang === 'en'
+            ? 'The data cannot be written to /data (it stays in memory; downloaded again after a restart): check the volume of the integration.'
+            : 'Les données ne peuvent pas être écrites dans /data (elles restent en mémoire ; retéléchargées après un redémarrage) : vérifiez le volume de l’intégration.',
         );
       }
       if (unresolved > 0) {

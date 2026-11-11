@@ -23,5 +23,9 @@ the notes of the version's GitHub Release.
   kept in `/data`; the status dates the data and tells the provisional share.
 - "Find my grid operator" button: the ID, the sheet and the windows of the
   operators matching a name, a town or a postcode.
+- Each year checked on its own: a year opened without sheets ("pending") or
+  a file that does not read never stops the others, and is not downloaded
+  again until it changes. The status is published in the background, never
+  awaited by the pricing.
 - `THIRD_PARTY_NOTICES.md` with the attribution of the data, shipped in the
   image with `LICENSE`.

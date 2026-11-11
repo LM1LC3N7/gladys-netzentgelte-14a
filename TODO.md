@@ -57,8 +57,18 @@
 - **Inputs**: VAT (19 % default, on the net grid fee), a supplement per kWh
   added as typed (VAT included), a fixed amount per month (a `fixed` component
   the core computes). Bounds: VAT 0-100 %, supplement 0-200 ct/kWh, fixed
-  0-1000 EUR/month; an empty input takes its default, anything else out of
-  bounds refuses the pricing.
+  0-1000 EUR/month, all checked by the module; an empty or blank input takes
+  its default, a text that is not a plain decimal or a value out of bounds
+  refuses the pricing.
+- **Modul 1 reduction not enterable** (review r1): the core refuses a
+  negative `fixed` amount (`tariff.schema.json`, `amount >= 0`), and the
+  reduction exceeds the grid base price for 618 of 640 operators in 2027. The
+  docs say to leave it out. To ask the core: a negative fixed amount, or a
+  `credit` component.
+- **Years checked one by one** (review r1): a year without any sheet and not
+  held is "pending" (the source opens a year before its sheets), a file that
+  does not read is refused; both remember their ETag. Only network failures
+  (5xx, timeout, 429) speed the retries up.
 - **Outside the Modul 3 quarters**: the standard price of the sheet
   (`std_arbeitspreis_ct_kwh`, ST when absent: the regulation sets ST to it,
   and the data shows them equal).

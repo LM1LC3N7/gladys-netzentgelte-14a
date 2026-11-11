@@ -36,7 +36,6 @@ export const INPUT_BOUNDS = {
 };
 
 export const ACTIONS = { FIND: 'find_operator' };
-export const CONFIG_KEYS = { SEARCH: 'search' };
 
 // --- Bounds ------------------------------------------------------------------
 
@@ -48,6 +47,8 @@ export const MAX_YEARS_BYTES = 4 * 1024;
 export const MAX_OPERATORS = 2000;
 /** Years kept: the most recent ones listed by jahre.json. */
 export const MAX_YEARS = 6;
+/** The /data state file read back at most this size (larger: not ours). */
+export const MAX_STATE_BYTES = 16 * 1024 * 1024;
 /** A price (ct/kWh, net) above this is not a grid fee: the operator is refused. */
 export const MAX_PRICE_CT = 200;
 /** Windows per level and quarter. */
@@ -69,3 +70,7 @@ export const PAUSE_MAX = 6 * 60 * 60_000;
 export const PAUSE_DEFAULT = 10 * 60_000;
 /** /data unreadable (not missing): read again on this period. */
 export const STORE_RETRY = 10_000;
+/** A write of /data longer than this counts as failed (the data stays in memory). */
+export const SAVE_TIMEOUT = 10_000;
+/** A status publication longer than this is given up (the next one goes on). */
+export const STATUS_TIMEOUT = 10_000;

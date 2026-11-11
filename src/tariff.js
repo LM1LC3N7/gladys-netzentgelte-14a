@@ -29,8 +29,16 @@ export class PricingError extends Error {
 /** A number input: its default when empty, a PricingError when not a number within bounds. */
 function numberInput(inputs, key) {
   const value = inputs?.[key];
-  if (value === undefined || value === null || value === '') return INPUT_DEFAULTS[key];
-  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  // Empty (or blank) is unknown: the default. A text must be a plain decimal number.
+  if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
+    return INPUT_DEFAULTS[key];
+  }
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(value.trim())
+        ? Number(value.trim())
+        : NaN;
   const [min, max] = INPUT_BOUNDS[key];
   if (!Number.isFinite(n) || n < min || n > max) {
     throw new PricingError(`The contract input "${key}" must be a number from ${min} to ${max}`);
@@ -44,6 +52,9 @@ export function contractInputs(contract) {
     throw new PricingError('Unknown contract template');
   }
   const inputs = contract?.inputs ?? {};
+  // The fixed amount is the core's to compute: checked here so that the
+  // bounds the documentation gives hold.
+  numberInput(inputs, INPUTS.FIXED);
   return {
     operator: inputs[INPUTS.OPERATOR],
     vat: numberInput(inputs, INPUTS.VAT),
@@ -129,12 +140,16 @@ export function intervalCosts(data, contract, intervals) {
       throw new PricingError('Invalid interval energy');
     }
     let grid = 0;
-    let label = '';
+    const names = [];
+    let provisional = false;
     for (const q of [t, t + QUARTER_HOUR]) {
       const { level, ct, op } = gridAt(pick, q);
       grid += (kwh / 2) * (ct / 100);
-      label = labelOf(level, op);
+      if (!names.includes(LEVEL_NAMES[level])) names.push(LEVEL_NAMES[level]);
+      provisional ||= Boolean(op.provisional);
     }
+    // Both quarters named when they differ ("ST/HT" for 17:00-17:30 with HT from 17:15).
+    const label = `${names.join('/')}${provisional ? ' (provisional)' : ''}`;
     const vat = grid * (inputs.vat / 100);
     const supplement = kwh * (inputs.supplement / 100);
     return {

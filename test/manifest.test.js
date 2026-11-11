@@ -197,3 +197,37 @@ test(
     );
   },
 );
+
+const contractValidate = join(
+  homedir(),
+  'code/Gladys/server/lib/energy-contract/contract.validate.js',
+);
+test(
+  'the core takes the template with a fixed amount from 0, and refuses a negative one',
+  { skip: !existsSync(contractValidate) && 'Gladys core not cloned' },
+  async (t) => {
+    const dir = await mkdtemp(join(tmpdir(), 'netzentgelte-core-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    const tariff = manifest.energy_contracts.templates[0].tariff;
+    const script = `
+      const { validateContractTariff } = require(${JSON.stringify(contractValidate)});
+      const out = {};
+      for (const fixed of [0, 12.5, -8.19]) {
+        try {
+          validateContractTariff(${JSON.stringify(tariff)}, { operator: '3', vat_percent: 19, supplement_ct_kwh: 0, fixed_eur_month: fixed }, 'delegated');
+          out[fixed] = 'ok';
+        } catch (err) { out[fixed] = 'refused'; }
+      }
+      console.log('RESULT' + JSON.stringify(out));
+    `;
+    const result = spawnSync(process.execPath, ['-e', script], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+    const line = result.stdout.split('\n').find((l) => l.startsWith('RESULT'));
+    assert.ok(line, result.stderr);
+    // The Modul 1 reduction cannot be typed as a negative amount: documented.
+    assert.deepEqual(JSON.parse(line.slice(6)), { 0: 'ok', 12.5: 'ok', '-8.19': 'refused' });
+  },
+);

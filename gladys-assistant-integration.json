@@ -122,8 +122,8 @@
             "default": 0,
             "label": { "en": "Fixed amount per month", "fr": "Montant fixe par mois" },
             "description": {
-              "en": "Base prices per month, Modul 1 reduction deducted, VAT included.",
-              "fr": "Prix de base par mois, réduction Modul 1 déduite, TVA comprise."
+              "en": "Base prices per month (grid, supplier), VAT included, 0 or more: the Modul 1 reduction cannot be deducted here (Gladys refuses a negative amount).",
+              "fr": "Prix de base par mois (réseau, fournisseur), TVA comprise, 0 ou plus : la réduction Modul 1 ne peut pas être déduite ici (Gladys refuse un montant négatif)."
             }
           }
         ],

@@ -18,6 +18,7 @@ import {
 } from '../src/data.js';
 import { PricingError, contractInputs, currentPrice, intervalCosts } from '../src/tariff.js';
 import { yearFile } from './fixtures/par14a.js';
+import { quarterOf, slotOf } from '../src/time.js';
 
 const close = (actual, expected, message) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message ?? ''} ${actual} != ${expected}`);
@@ -31,6 +32,15 @@ const contract = (operator, inputs = {}) => ({
   inputs: { operator, vat_percent: 0, supplement_ct_kwh: 0, ...inputs },
 });
 const price = (d, c, starts_at, kwh = 1) => intervalCosts(d, c, [{ starts_at, kwh }])[0];
+
+test('the quarter-hour slot of a wall-clock time is floored', () => {
+  assert.equal(slotOf({ hour: 17, minute: 14 }), 68);
+  assert.equal(slotOf({ hour: 17, minute: 15 }), 69);
+  assert.equal(slotOf({ hour: 0, minute: 59 }), 3);
+  assert.equal(quarterOf(3), 1);
+  assert.equal(quarterOf(4), 2);
+  assert.equal(quarterOf(12), 4);
+});
 
 test('windows: quarter-hour grid, 24:00, across midnight; anything else refused', () => {
   assert.deepEqual(windowSlots('17:15-18:00'), [69, 70, 71]);
@@ -181,7 +191,7 @@ test('a half hour across a window boundary is priced as its two quarters', () =>
   close(cost.components.grid_fee, 0.1);
   close(cost.components.vat, 0.019);
   close(cost.components.supplement, 0);
-  assert.equal(cost.label, 'HT');
+  assert.equal(cost.label, 'ST/HT');
   assert.equal(cost.starts_at, '2026-01-15T16:00:00Z');
   // The supplement is added as typed (VAT included), on the whole kWh.
   const withSupplement = price(
@@ -335,6 +345,21 @@ test('the inputs: defaults when empty, numbers typed as text accepted', () => {
     { operator: '101', vat: 7, supplement: 30.5 },
   );
   assert.equal(contractInputs({ template_key: 'de-14a-modul-3', inputs: {} }).vat, 19);
+  // Blank is empty: the default; a text that is not a plain decimal is refused.
+  assert.equal(contractInputs({ inputs: { vat_percent: ' ' } }).vat, 19);
+  assert.equal(contractInputs({ inputs: { vat_percent: '\t' } }).vat, 19);
+  assert.equal(contractInputs({ inputs: { vat_percent: ' 7.5 ' } }).vat, 7.5);
+  for (const bad of ['0x10', '1e1', '7,5', 'abc', '--1', true]) {
+    assert.throws(
+      () => contractInputs({ inputs: { vat_percent: bad } }),
+      PricingError,
+      String(bad),
+    );
+  }
+  // The fixed amount is the core's, but its bounds hold here too (the core refuses < 0).
+  assert.throws(() => contractInputs({ inputs: { fixed_eur_month: -8.19 } }), PricingError);
+  assert.throws(() => contractInputs({ inputs: { fixed_eur_month: 1001 } }), PricingError);
+  assert.doesNotThrow(() => contractInputs({ inputs: { fixed_eur_month: '12.5' } }));
 });
 
 test('the current price, when it changes and the next one', () => {
@@ -364,5 +389,10 @@ test('the current price, when it changes and the next one', () => {
   close(next.next_price, 0.03);
   assert.equal(next.next_label, 'NT (provisional)');
   assert.throws(() => currentPrice(d, contract('999'), now), PricingError);
+  // A change hours away: NT 00:00-06:00 asked at 00:10 CET ends at 06:00 CET.
+  const night = currentPrice(d, contract('101'), Date.parse('2026-01-14T23:10:00Z'));
+  close(night.price, 0.02);
+  assert.equal(night.valid_until, '2026-01-15T05:00:00.000Z');
+  close(night.next_price, 0.08);
   assert.ok(current.label.length <= 64);
 });

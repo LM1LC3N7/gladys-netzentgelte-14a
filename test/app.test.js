@@ -227,11 +227,32 @@ test('a new file that does not read is refused whole: the held year stays', asyn
   source.files['2027.json'] = [{ nothing: true }];
   source.etags['2027.json'] = '"broken"';
   await wait(DAY);
-  assert.match(status(gladys).message.en, /unreadable data/);
+  assert.match(
+    status(gladys).message.en,
+    /2027: the file was refused \(unreadable data\); the data held stays in use\./,
+  );
+  assert.doesNotMatch(status(gladys).message.en, /failed/, 'not a failed check');
   assert.equal(app.years.get(2027).priced, 3);
-  assert.equal(app.files[2027].etag, '"v1-2027"', 'the old ETag: the broken file is asked again');
+  assert.equal(app.files[2027].etag, '"v1-2027"');
+  // Not asked sooner, and not downloaded again while it does not change.
+  source.requests.length = 0;
+  await wait(DAY - MINUTE);
+  assert.equal(source.requests.length, 0);
+  await wait(MINUTE);
+  const again = source.requests.find((r) => r.path === '2027.json');
+  assert.equal(again.headers['If-None-Match'], '"broken"');
+  assert.match(status(gladys).message.en, /2027: the file was refused/);
+  // Fixed at the source: taken, the note goes.
+  source.files['2027.json'] = yearFile(2027);
+  source.etags['2027.json'] = '"v3-2027"';
+  await wait(DAY);
+  assert.equal(app.files[2027].etag, '"v3-2027"');
+  assert.doesNotMatch(status(gladys).message.en, /refused/);
+  // The list of years is needed: when it does not read, the check fails and is retried.
   source.files['jahre.json'] = 'not json';
   source.files['jahre.json'] = () => new Response('<html>', { status: 200 });
+  await wait(DAY);
+  assert.match(status(gladys).message.en, /Last check failed: unreadable data/);
   await wait(5 * MINUTE);
   assert.match(status(gladys).message.en, /unreadable data/);
   source.files['jahre.json'] = () => json({ years: [] });
@@ -338,7 +359,8 @@ test('delegated pricing through Gladys: costs per half hour, label, failure = no
   assert.equal(ack.success, true, JSON.stringify(ack));
   close(ack.data.costs[0].cost, (0.5 * 0.08 + 0.5 * 0.12) * 1.19);
   close(ack.data.costs[1].cost, 2 * 0.12 * 1.19);
-  assert.equal(ack.data.costs[0].label, 'HT');
+  assert.equal(ack.data.costs[0].label, 'ST/HT', 'both quarters named');
+  assert.equal(ack.data.costs[1].label, 'HT');
   const empty = await gladys.fake.energyPrice(priceRequest([]));
   assert.equal(empty.success, true);
   const unknown = await gladys.fake.energyPrice(
@@ -450,4 +472,153 @@ test('the search before any data, and in a year without data the latest one', as
   const later = await setup({ now: Date.parse('2028-02-01T10:00:00Z') });
   const found = await later.gladys.fake.action('find_operator', { query: '101' });
   assert.match(found.data.message.en, /2027 sheet provisional, read 2026-10-28, HT 13\.00/);
+});
+
+test('a year opened without sheets is "pending": the other years are still updated', async () => {
+  const { source, wait, app, gladys, store } = await setup();
+  // The source opens 2028 (every operator, no sheet) while 2027 turns final for 101.
+  source.files['jahre.json'] = ['2028', '2027', '2026'];
+  source.files['2028.json'] = yearFile(2027).map(({ pb: _pb, ...rest }) => rest);
+  source.etags['2028.json'] = '"v1-2028"';
+  source.files['2027.json'] = yearFile(2027, {
+    101: (op) => ({ ...op, pb: { ...op.pb, status: 'endgueltig', m3_ht_ct_kwh: 15.1 } }),
+  });
+  source.etags['2027.json'] = '"v2-2027"';
+  await wait(DAY);
+  const op = app.years.get(2027).operators.find((o) => o.id === '101');
+  assert.equal(op.prices.H, 15.1);
+  assert.equal(op.provisional, false);
+  assert.equal(app.years.has(2028), false);
+  const text = status(gladys).message.en;
+  assert.match(text, /2028: no sheet published yet\./);
+  assert.doesNotMatch(text, /failed|refused/);
+  assert.equal(store.data.failures, 0, 'no faster retry');
+  assert.deepEqual(store.data.refused, { 2028: { etag: '"v1-2028"', issue: 'pending' } });
+  // The next day: 2028 asked conditionally, not downloaded again.
+  source.requests.length = 0;
+  await wait(DAY);
+  const asked = source.requests.find((r) => r.path === '2028.json');
+  assert.equal(asked.headers['If-None-Match'], '"v1-2028"');
+  // Kept across a restart too.
+  await app.stop();
+  const again = createSource();
+  Object.assign(again.files, source.files);
+  Object.assign(again.etags, source.etags);
+  const restarted = await setup({ store, source: again, now: NOW + 3 * DAY + MINUTE });
+  const after = again.requests.find((r) => r.path === '2028.json');
+  assert.equal(after.headers['If-None-Match'], '"v1-2028"');
+  assert.match(status(restarted.gladys).message.en, /2028: no sheet published yet/);
+  await restarted.app.stop();
+  await app.start();
+  await wait(0);
+  // Its sheets arrive: taken.
+  source.files['2028.json'] = yearFile(2027);
+  source.etags['2028.json'] = '"v2-2028"';
+  await wait(DAY);
+  assert.equal(app.years.get(2028).priced, 3);
+  assert.doesNotMatch(status(gladys).message.en, /2028: no sheet/);
+});
+
+test('a year that fails on the network does not stop the others', async () => {
+  const { source, wait, app, gladys, store } = await setup();
+  source.files['2027.json'] = () => new Response('', { status: 503 });
+  source.files['2026.json'] = yearFile(2026, {
+    101: (op) => ({ ...op, pb: { ...op.pb, m3_nt_ct_kwh: 1.5 } }),
+  });
+  source.etags['2026.json'] = '"v2-2026"';
+  await wait(DAY);
+  assert.equal(app.years.get(2026).operators.find((o) => o.id === '101').prices.N, 1.5);
+  assert.equal(app.years.get(2027).priced, 3, 'the held 2027 stays');
+  assert.match(status(gladys).message.en, /Last check failed: the page is unavailable/);
+  assert.equal(store.data.failures, 1);
+  source.files['2027.json'] = yearFile(2027);
+  await wait(5 * MINUTE);
+  assert.equal(store.data.failures, 0);
+});
+
+test('the pricing never waits for the status: a hung status publication', async () => {
+  const { app, gladys } = await setup();
+  let calls = 0;
+  gladys.setConnectionStatus = () => {
+    calls += 1;
+    return new Promise(() => {});
+  };
+  const unknown = { ...CONTRACT, id: 'c9', inputs: { operator: '999' } };
+  const started = performance.now();
+  const current = await app.energyCurrent({ contract: unknown });
+  assert.equal(current.price, null);
+  const known = await app.energyCurrent({ contract: CONTRACT });
+  assert.ok(known.price > 0);
+  await assert.rejects(app.energyPrice(priceRequest([['2026-01-15T16:00:00Z', 1]], unknown)));
+  const costs = await app.energyPrice(priceRequest([['2026-01-15T16:00:00Z', 1]]));
+  assert.equal(costs.length, 1);
+  assert.ok(performance.now() - started < 1000, 'answered at once');
+  assert.equal(calls, 1, 'one publication for the new state, never retried per call');
+});
+
+test('a failed status publication is not retried on every call', async () => {
+  const { app, gladys, wait } = await setup();
+  let calls = 0;
+  gladys.setConnectionStatus = async () => {
+    calls += 1;
+    throw new Error('503');
+  };
+  const unknown = { ...CONTRACT, id: 'c9', inputs: { operator: '999' } };
+  for (let i = 0; i < 5; i += 1) {
+    await app.energyCurrent({ contract: unknown });
+    await wait(0);
+  }
+  await wait(0);
+  assert.equal(calls, 1);
+  // A reconnection publishes it again.
+  await app.stop();
+  await app.start();
+  await wait(0);
+  assert.ok(calls >= 2, 'published again after a reconnection');
+});
+
+test('/data write that hangs: the check goes on, the status says so, stop ends', async () => {
+  const store = createMemoryStore();
+  store.save = () => new Promise(() => {});
+  const { app, gladys, clock, source } = await setup({ store, start: false });
+  // Not app.idle(): it would wait for the hung write itself.
+  const advance = async (ms) => {
+    await clock.advance(ms);
+    await settle(30);
+  };
+  await app.start();
+  await advance(0);
+  await advance(10 * SECOND);
+  await advance(10 * SECOND);
+  assert.ok(source.count('2026.json') === 1, 'the check went on');
+  assert.equal(app.years.size, 2);
+  assert.match(status(gladys).message.en, /cannot be written to \/data/);
+  let stopped = false;
+  app.stop().then(() => (stopped = true));
+  await advance(10 * SECOND);
+  assert.equal(stopped, true);
+});
+
+test('the state file stays under the size read back: the oldest years left out', async () => {
+  const source = createSource();
+  // About 6 MB a year once serialised: three years do not fit in 16 MB.
+  const padded = (year) =>
+    yearFile(year).concat(
+      Array.from({ length: 1500 }, (_, i) => ({
+        vnb_id: String(5000 + i),
+        name: `Netz ${i} ${'x'.repeat(150)}`,
+        pb: { status: 'nicht_gefunden', hinweise: 'y'.repeat(3800) },
+      })),
+    );
+  source.files['jahre.json'] = ['2028', '2027', '2026'];
+  for (const y of [2026, 2027, 2028]) {
+    source.files[`${y}.json`] = padded(y);
+    source.etags[`${y}.json`] = `"big-${y}"`;
+  }
+  const { store, app, lines } = await setup({ source });
+  assert.equal(app.years.size, 3, 'all in memory');
+  const size = Buffer.byteLength(JSON.stringify(store.data));
+  assert.ok(size < 16 * 1024 * 1024, `${size} bytes`);
+  assert.deepEqual(Object.keys(store.data.years).sort(), ['2027', '2028']);
+  assert.ok(lines.some((l) => /2026 not written to \/data/.test(l)));
 });

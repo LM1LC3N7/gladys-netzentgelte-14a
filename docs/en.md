@@ -63,8 +63,12 @@ network.
    - **Supplement per kWh** (ct/kWh, 0 by default): everything else your
      supplier bills per kWh (energy, levies, electricity tax), VAT included,
      added as you type it;
-   - **Fixed amount per month** (EUR, 0 by default): the base prices, Modul 1
-     reduction deducted, VAT included; Gladys computes it.
+   - **Fixed amount per month** (EUR, 0 by default, 0 to 1000): the base
+     prices per month (grid and supplier), VAT included; Gladys computes it.
+     The Modul 1 reduction cannot be deducted: for most operators it is larger
+     than the grid base price, and Gladys refuses a negative amount. Leave it
+     out; the costs shown are then above your bill by that reduction (see
+     "Limits").
 
 ## How a half hour is priced
 
@@ -95,8 +99,16 @@ network.
   name matching several operators: the half hours are not priced (never priced
   at 0); Gladys tries again at its next run, and catches up once the data is
   there. The status counts the contracts whose operator is not found.
+- **Billing day**: Gladys asks for the costs of one billing period at a time,
+  all or nothing. With a billing day other than the 1st, the December half
+  hours of a period running past 1 January also wait for the next year's
+  sheet.
+- **Modul 1 reduction**: it cannot be entered (a negative fixed amount is
+  refused by Gladys); the costs shown exceed the bill by it.
 - **Sheet updates**: when a provisional sheet becomes final, the half hours
   priced before keep their cost.
+- **Labels**: a half hour whose two quarter hours differ is labelled with
+  both, e.g. `ST/HT` for 17:00-17:30 with HT from 17:15.
 - The prices of the database are the grid fees only: the energy price of your
   supplier, the levies and the taxes go in the supplement.
 
@@ -107,6 +119,13 @@ network.
   after 5, 15, 30, 60 minutes, then every 3 hours), asked to slow down (429:
   paused for the time it asks, between 1 minute and 6 hours), or sent a file
   that does not read (the data held stays in use).
+- "2028: no sheet published yet": the source opened a year without any sheet;
+  not an error. "2027: the file was refused (…)": a new file of that year did
+  not read; the data held for it stays in use, the other years are updated,
+  and the file is asked again (conditionally) at the next daily check.
+- "The data cannot be written to /data": a write failed or took more than
+  10 seconds; the data stays in memory and is downloaded again after a
+  restart.
 - "The saved data in /data cannot be read": the volume of the integration is
   broken; read again every 10 seconds, nothing is downloaded meanwhile.
 

@@ -1,6 +1,7 @@
 // -----------------------------------------------------------------------------
 // The state kept in /data (the only writable place of the container): the
-// checked Par14a-Database years (compact), their ETag and date, the time of
+// Par14a-Database year files as received (checked again when read back),
+// their ETag and date, the ETag of the files refused, the time of
 // the last check and of the last attempt, and the pause after a 429. No
 // secret, no personal data. One JSON file written through a temporary file
 // and a rename, one save after the other. Taken from gladys-iskra (approved).
@@ -11,9 +12,9 @@
 // -----------------------------------------------------------------------------
 
 import { readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { MAX_STATE_BYTES } from './constants.js';
 
 export const DEFAULT_STATE_FILE = '/data/netzentgelte-14a-state.json';
-const MAX_STATE_BYTES = 16 * 1024 * 1024;
 
 export function createFileStore(file = DEFAULT_STATE_FILE) {
   let queue = Promise.resolve();

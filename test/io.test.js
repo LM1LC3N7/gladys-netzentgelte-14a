@@ -50,6 +50,22 @@ test('getJson: 200, 304, the ETag sent only when clean, the answer headers bound
   assert.equal((await getJson('https://x/y', { fetchImpl, limit: 100, etag: '"a"' })).status, 304);
   await getJson('https://x/y', { fetchImpl, limit: 100, etag: '"a"\r\nX: 1' });
   assert.equal(seen.at(-1)['If-None-Match'], undefined);
+  // A 429 with an HTTP date: measured on the server's Date header, not the local clock.
+  await assert.rejects(
+    getJson('https://x/y', {
+      limit: 100,
+      now: () => Date.parse('2026-01-15T13:00:00Z'),
+      fetchImpl: async () =>
+        new Response('', {
+          status: 429,
+          headers: {
+            date: 'Thu, 15 Jan 2026 12:00:00 GMT',
+            'retry-after': 'Thu, 15 Jan 2026 12:30:00 GMT',
+          },
+        }),
+    }),
+    (e) => e.code === 'rate_limited' && e.retryAfter === 30 * 60_000,
+  );
   const fail = (response) =>
     getJson('https://x/y', { fetchImpl: async () => response, limit: 100 });
   await assert.rejects(fail(new Response('', { status: 500 })), (e) => e.code === 'server');

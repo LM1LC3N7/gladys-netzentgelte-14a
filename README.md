@@ -31,8 +31,15 @@ Gladys ⇄ SDK ⇄ src/app.js (App)   daily check, /data, status, pricing handle
   `If-None-Match`; the time of the attempt is written to `/data` before the
   first request, so neither a restart nor a reconnection checks sooner. Errors:
   5, 15, 30, 60 minutes, then every 3 hours; 429: its Retry-After within
-  [1 min, 6 h] (10 min when absent), kept in `/data`. A file that does not read
-  is refused whole; the year held stays in use.
+  [1 min, 6 h] (10 min when absent, an HTTP date measured on the `Date`
+  header), kept in `/data`. Each year is checked on its own: a year opened
+  without any sheet is "pending", a file that does not read is refused whole
+  (the year held stays in use); both keep their ETag, so they are not
+  downloaded again until they change, and neither stops the other years nor
+  speeds the retries up. Writes to `/data` are bounded (10 s) and kept under
+  the 16 MB read back (the oldest years left out).
+- **Status**: published in the background, each state once, never awaited by
+  the pricing handlers.
 - **Checks on the data**: windows on the quarter-hour grid (`24:00` as an end,
   an end before the start crosses midnight), HT and NT never overlapping, prices
   finite within [0, 200] ct/kWh; an operator failing one is listed by the
@@ -41,8 +48,8 @@ Gladys ⇄ SDK ⇄ src/app.js (App)   daily check, /data, status, pricing handle
   of `kwh / 2`, each at the level of its Berlin wall-clock time in the sheet of
   its Berlin year; outside the Modul 3 quarters, the standard price. Cost =
   grid fee × (1 + VAT) + supplement; components `grid_fee`, `vat`,
-  `supplement`; label `HT` / `ST` / `NT` / `Standard`, `(provisional)` for a
-  provisional sheet. Anything missing (year, operator, sheet) throws: the core
+  `supplement`; label `HT` / `ST` / `NT` / `Standard` (both quarters when they
+  differ, `ST/HT`), `(provisional)` for a provisional sheet. Anything missing (year, operator, sheet) throws: the core
   stores no cost and retries. No network on this path.
 - **Current price** (`onEnergyCurrent`): the current quarter hour, the next
   change within 8 days and its price; `null` when the contract cannot be

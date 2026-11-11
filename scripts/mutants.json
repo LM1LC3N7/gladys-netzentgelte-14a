@@ -116,8 +116,8 @@
   {
     "name": "app: 429 pause not bounded",
     "file": "src/app.js",
-    "from": "Math.min(Math.max(err.retryAfter ?? PAUSE_DEFAULT, PAUSE_MIN), PAUSE_MAX)",
-    "to": "err.retryAfter ?? PAUSE_DEFAULT"
+    "from": "Math.min(Math.max(failure.retryAfter ?? PAUSE_DEFAULT, PAUSE_MIN), PAUSE_MAX)",
+    "to": "failure.retryAfter ?? PAUSE_DEFAULT"
   },
   {
     "name": "app: stored pause not bounded",
@@ -140,7 +140,7 @@
   {
     "name": "app: request never conditional",
     "file": "src/app.js",
-    "from": "etag: this.years.has(year) ? held?.etag : undefined,",
+    "from": "etag: refused?.etag ?? (this.years.has(year) ? held?.etag : undefined),",
     "to": "etag: undefined,"
   },
   {
@@ -196,5 +196,161 @@
     "file": "src/http.js",
     "from": "if (!/^[A-Za-z]{3}, /.test(value)) return undefined;",
     "to": ""
+  },
+  {
+    "name": "R1 time: quarter of March/June/Sept/Dec shifted",
+    "file": "src/time.js",
+    "from": "Math.ceil(month / 3)",
+    "to": "Math.floor(month / 3) + 1"
+  },
+  {
+    "name": "R2 time: slot rounded instead of floored",
+    "file": "src/time.js",
+    "from": "Math.floor(minute / 15)",
+    "to": "Math.round(minute / 15)"
+  },
+  {
+    "name": "R3 data: a window across midnight loses its morning part",
+    "file": "src/data.js",
+    "from": "end + SLOTS - start",
+    "to": "SLOTS - start"
+  },
+  {
+    "name": "R4 data: 24:00 one quarter short",
+    "file": "src/data.js",
+    "from": "m[5] ? SLOTS :",
+    "to": "m[5] ? SLOTS - 1 :"
+  },
+  {
+    "name": "R5 data: an empty window (17:00-17:00) read as a whole day",
+    "file": "src/data.js",
+    "from": "if (start === end) throw new DataError('empty window');",
+    "to": ""
+  },
+  {
+    "name": "R6 tariff: current price of the next quarter",
+    "file": "src/tariff.js",
+    "from": "Math.floor(now / QUARTER_HOUR)",
+    "to": "Math.ceil(now / QUARTER_HOUR)"
+  },
+  {
+    "name": "R7 tariff: next change searched over 4 hours only",
+    "file": "src/tariff.js",
+    "from": "const LOOKAHEAD_SLOTS = 8 * 24 * 4;",
+    "to": "const LOOKAHEAD_SLOTS = 4 * 4;"
+  },
+  {
+    "name": "R8 tariff: an empty input read as 0 (Number(''))",
+    "file": "src/tariff.js",
+    "from": "(typeof value === 'string' && !value.trim())",
+    "to": "false"
+  },
+  {
+    "name": "R9 app: failures not reset by a success",
+    "file": "src/app.js",
+    "from": "this.meta.failures = 0;",
+    "to": ""
+  },
+  {
+    "name": "R11 data: a numeric operator also matched as a name",
+    "file": "src/data.js",
+    "from": "if (/^\\d{1,10}$/.test(raw)) {",
+    "to": "if (/^\\d{1,10}$/.test(raw) && false) {"
+  },
+  {
+    "name": "R10 http: CR/LF in a stored ETag sent",
+    "file": "src/http.js",
+    "from": "etag && !/[\\r\\n]/.test(etag))",
+    "to": "etag)"
+  },
+  {
+    "name": "R12 app: the stored attempt ignored (a check at every restart)",
+    "file": "src/app.js",
+    "from": "this.meta.attemptAt = pastDate(data.attemptAt, now);",
+    "to": "this.meta.attemptAt = undefined;"
+  },
+  {
+    "name": "app: the price waits for the status",
+    "file": "src/app.js",
+    "from": "    this.publishStatus();\n    return intervalCosts(",
+    "to": "    await this.publishStatus();\n    return intervalCosts("
+  },
+  {
+    "name": "app: the current price waits for the status",
+    "file": "src/app.js",
+    "from": "    this.noteContract(contract);\n    this.publishStatus();\n    try {",
+    "to": "    this.noteContract(contract);\n    await this.publishStatus();\n    try {"
+  },
+  {
+    "name": "app: a failed status retried on every call",
+    "file": "src/app.js",
+    "from": "      this.logger.warn(`Status not published: ${err?.message ?? err}`);",
+    "to": "      this.lastStatus = undefined;\n      this.logger.warn(`Status not published: ${err?.message ?? err}`);"
+  },
+  {
+    "name": "app: a year failure stops the others",
+    "file": "src/app.js",
+    "from": "          failure = err;\n          if (err.code === 'rate_limited') break;",
+    "to": "          throw err;"
+  },
+  {
+    "name": "app: a year without sheets is an invalid file",
+    "file": "src/app.js",
+    "from": "err.message === 'no usable price sheet' && !this.years.has(year) ? 'pending' : 'invalid'",
+    "to": "'invalid'"
+  },
+  {
+    "name": "app: refused file downloaded again",
+    "file": "src/app.js",
+    "from": "etag: refused?.etag ?? (this.years.has(year) ? held?.etag : undefined),",
+    "to": "etag: this.years.has(year) ? held?.etag : undefined,"
+  },
+  {
+    "name": "app: refused files forgotten at restart",
+    "file": "src/app.js",
+    "from": "        this.refused[Number(key)] = { etag: entry.etag, issue: entry.issue };",
+    "to": ""
+  },
+  {
+    "name": "app: /data write not bounded in time",
+    "file": "src/app.js",
+    "from": "timer = this.timers.setTimeout(() => resolve('timeout'), SAVE_TIMEOUT);",
+    "to": "timer = undefined;"
+  },
+  {
+    "name": "app: state file size not bounded",
+    "file": "src/app.js",
+    "from": "      if (file.bytes > budget) {",
+    "to": "      if (false) {"
+  },
+  {
+    "name": "tariff: half-hour label from the second quarter only",
+    "file": "src/tariff.js",
+    "from": "      if (!names.includes(LEVEL_NAMES[level])) names.push(LEVEL_NAMES[level]);",
+    "to": "      names.splice(0, names.length, LEVEL_NAMES[level]);"
+  },
+  {
+    "name": "tariff: blank input read as 0",
+    "file": "src/tariff.js",
+    "from": "(typeof value === 'string' && !value.trim())",
+    "to": "value === ''"
+  },
+  {
+    "name": "tariff: hexadecimal input accepted",
+    "file": "src/tariff.js",
+    "from": "/^[+-]?(\\d+(\\.\\d*)?|\\.\\d+)$/.test(value.trim())",
+    "to": "Number.isFinite(Number(value))"
+  },
+  {
+    "name": "tariff: fixed amount not checked",
+    "file": "src/tariff.js",
+    "from": "  numberInput(inputs, INPUTS.FIXED);\n",
+    "to": ""
+  },
+  {
+    "name": "http: Retry-After date on the local clock",
+    "file": "src/http.js",
+    "from": "Number.isFinite(served) ? served : now()",
+    "to": "now()"
   }
 ]

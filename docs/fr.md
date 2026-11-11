@@ -70,8 +70,12 @@ utilise ce qui est gardé : elle n'attend pas le réseau.
    - **Supplément au kWh** (ct/kWh, 0 par défaut) : tout le reste facturé au
      kWh par votre fournisseur (énergie, prélèvements, taxe sur l'électricité),
      TVA comprise, ajouté tel que vous le saisissez ;
-   - **Montant fixe par mois** (EUR, 0 par défaut) : les prix de base,
-     réduction Modul 1 déduite, TVA comprise ; Gladys le calcule.
+   - **Montant fixe par mois** (EUR, 0 par défaut, de 0 à 1000) : les prix de
+     base par mois (réseau et fournisseur), TVA comprise ; Gladys le calcule.
+     La réduction Modul 1 ne peut pas être déduite : pour la plupart des
+     gestionnaires elle dépasse le prix de base réseau, et Gladys refuse un
+     montant négatif. Laissez-la de côté ; les coûts affichés dépassent alors
+     votre facture de cette réduction (voir « Limites »).
 
 ## Tarification d'une demi-heure
 
@@ -105,8 +109,16 @@ utilise ce qui est gardé : elle n'attend pas le réseau.
   (jamais tarifées à 0) ; Gladys réessaie à son passage suivant, et rattrape
   quand les données arrivent. Le statut compte les contrats dont le
   gestionnaire est introuvable.
+- **Jour de facturation** : Gladys demande les coûts d'une période de
+  facturation à la fois, tout ou rien. Avec un jour de facturation autre que
+  le 1er, les demi-heures de décembre d'une période qui passe le 1er janvier
+  attendent aussi la grille de l'année suivante.
+- **Réduction Modul 1** : elle ne peut pas être saisie (Gladys refuse un
+  montant fixe négatif) ; les coûts affichés la dépassent d'autant.
 - **Mises à jour des grilles** : quand une grille provisoire devient
   définitive, les demi-heures déjà tarifées gardent leur coût.
+- **Libellés** : une demi-heure dont les deux quarts d'heure diffèrent porte
+  les deux, par exemple `ST/HT` pour 17:00-17:30 avec HT dès 17:15.
 - Les prix de la base sont les tarifs réseau seuls : le prix de l'énergie de
   votre fournisseur, les prélèvements et les taxes vont dans le supplément.
 
@@ -119,6 +131,15 @@ utilise ce qui est gardé : elle n'attend pas le réseau.
   a demandé de ralentir (429 : pause du temps demandé, entre 1 minute et
   6 heures), ou a envoyé un fichier illisible (les données gardées restent
   utilisées).
+- « 2028 : aucune grille publiée pour l'instant » : la source a ouvert une
+  année sans grille ; ce n'est pas une erreur. « 2027 : le fichier a été
+  refusé (…) » : un nouveau fichier de cette année est illisible ; les données
+  gardées pour elle restent utilisées, les autres années sont mises à jour, et
+  le fichier est redemandé (de façon conditionnelle) à la vérification
+  quotidienne suivante.
+- « Les données ne peuvent pas être écrites dans /data » : une écriture a
+  échoué ou a pris plus de 10 secondes ; les données restent en mémoire et
+  sont retéléchargées après un redémarrage.
 - « Les données gardées dans /data sont illisibles » : le volume de
   l'intégration est abîmé ; relu toutes les 10 secondes, rien n'est téléchargé
   en attendant.
