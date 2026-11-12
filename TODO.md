@@ -2,14 +2,14 @@
 
 ## Before announcing
 
-- [ ] Test on a real Gladys 5.2+: install, the status, the search button, a
+- [ ] Test on a real Gladys 5.3+: install, the status, the search button, a
       contract on a meter, the costs of a day and a night, the dashboard price
       widget, a contract with an unknown operator.
 - [ ] Turn on "Private vulnerability reporting" (SECURITY.md points there).
 - [ ] Add the `gladys-assistant-integration` topic to publish in the store
       (after the first release: the store validator needs the GHCR image).
-- [ ] Store fields left out of the manifest: `keywords` (Netzentgelt, §14a,
-      Modul 3, Wärmepumpe, Wallbox) and `countries` (`DE`).
+- [ ] Store field left out of the manifest: `keywords` (Netzentgelt, §14a,
+      Modul 3, Wärmepumpe, Wallbox).
 
 ## To confirm
 
@@ -35,8 +35,9 @@
 - **Version 0.1.0** set once by hand when leaving the template (package, lock
   file, manifest, image tag `ghcr.io/lm1lc3n7/gladys-netzentgelte-14a:0.1.0`);
   the Release workflow owns it from now on.
-- **`type: "provider"`, `gladys_version: ">=5.2.0"`**: no device, the energy
-  contract capability only (it needs Gladys 5.2, as gladys-octopus-energy).
+- **`type: "provider"`, `gladys_version: ">=5.3.0"`**: no device, the energy
+  contract capability only (it needs Gladys 5.2, as gladys-octopus-energy);
+  `countries: ["DE"]` needs 5.3.
 - **Delegated model, one template**: about 650 operators (20 templates at
   most), so the operator is a contract input (its vnbdigital ID, or its exact
   name, or a part matching one operator only). The core rule engine can say

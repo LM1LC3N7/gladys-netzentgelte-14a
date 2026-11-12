@@ -3,6 +3,7 @@
 // fake Gladys, the search button. Virtual clock, scripted source.
 // -----------------------------------------------------------------------------
 
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../src/store.js';
@@ -22,6 +23,9 @@ import {
   setup,
 } from './helpers/app.js';
 
+// The released version, never written here: the Release workflow bumps it.
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+
 const close = (actual, expected) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`);
 const status = (gladys) => gladys.fake.connectionStatus;
@@ -39,9 +43,9 @@ test('first start: the years downloaded, kept in /data, the status dates them', 
     assert.equal(r.init.redirect, 'error');
     assert.ok(r.init.signal, 'a timeout');
   }
-  assert.match(
+  assert.equal(
     USER_AGENT,
-    /^gladys-netzentgelte-14a\/0\.1\.0 \(\+https:\/\/github\.com\/LM1LC3N7\//,
+    `gladys-netzentgelte-14a/${pkg.version} (+https://github.com/LM1LC3N7/gladys-netzentgelte-14a)`,
   );
   assert.deepEqual(Object.keys(store.data.years).sort(), ['2026', '2027']);
   assert.equal(store.data.years['2027'].etag, '"v1-2027"');
